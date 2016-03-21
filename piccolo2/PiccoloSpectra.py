@@ -53,7 +53,7 @@ class PiccoloSpectraList(MutableSequence):
     
     @property 
     def outName(self):
-        return os.path.join(self.prefix,'{06d}.pico'.format(self.seqNr))
+        return '{0}{1:06d}.pico'.format(self.prefix,self.seqNr)
 
     @property
     def directions(self):
@@ -82,7 +82,7 @@ class PiccoloSpectraList(MutableSequence):
 
         spectra = []
         for s in self._spectra:
-            spectra.append(s.serialize())
+            spectra.append(s.as_dict)
         root = {'Spectra':spectra, 'SequenceNumber': self._seqNr}
 
         if pretty:
@@ -189,12 +189,16 @@ class PiccoloSpectrum(MutableMapping):
 
     def getNumberOfPixels(self):
         return len(self.pixels)
-
-    def serialize(self,pretty=True):
+    
+    @property
+    def as_dict(self):
         spectrum = {}
         spectrum['Metadata'] = dict(self.items())
         spectrum['Pixels'] = self.pixels
-        
+        return spectrum
+
+    def serialize(self,pretty=True):
+        spectrum = self.as_dict
         if pretty:
             return json.dumps(spectrum, sort_keys=True, indent=1)
         else:
