@@ -14,11 +14,18 @@ protectedKeys = ['Direction','Dark','Datetime']
 
 class PiccoloSpectraList(MutableSequence):
     """a collection of spectra"""
-    def __init__(self,outDir='',seqNr=0, prefix=None):
+    def __init__(self,seqNr=0,data=None):
         self._spectra = []
-        self._outDir = outDir
         self._seqNr = seqNr
-        self._prefix=prefix
+        self._prefix = ''
+
+        # initialise from json if available
+        if data!=None:
+            if isinstance(data,(str,unicode)):
+                data = json.loads(data)
+            self._seqNr = data['SequenceNumber']
+            for s in data['Spectra']:
+                self.append(PiccoloSpectrum(data=s))
 
     def __getitem__(self,i):
         return self._spectra[i]
@@ -34,16 +41,39 @@ class PiccoloSpectraList(MutableSequence):
         self._spectra.insert(i,y)
 
     @property
+    def seqNr(self):
+        return self._seqNr
+    
+    @property
+    def prefix(self):
+        return self._prefix
+    @prefix.setter
+    def prefix(self,p):
+        self._prefix = p
+    
+    @property 
     def outName(self):
-        if self._prefix!=None:
-            outp = '{}_'.format(self._prefix)
-        else:
-            outp = ''
-        return '{0}{1:06d}.pico'.format(outp,self._seqNr)
+        return os.path.join(self.prefix,'{06d}.pico'.format(self.seqNr))
 
     @property
-    def outPath(self):
-        return os.path.join(self._outDir,self.outName)
+    def directions(self):
+        dirs = set()
+        for s in self._spectra:
+            dirs.add(s['Direction'])
+        return list(dirs)
+
+    def getSpectra(self,direction,spectrum):
+        if spectrum == 'Dark':
+            dark = True
+        elif spectrum == 'Light':
+            dark = False
+        else:
+            raise KeyError, 'spectrum must be one of Dark or Light'
+        spectra = []
+        for s in self._spectra:
+            if s['Direction'] == direction and s['Dark'] == dark:
+                 spectra.append(s)
+        return spectra
 
     def serialize(self,pretty=True):
         """serialize to JSON
@@ -52,8 +82,8 @@ class PiccoloSpectraList(MutableSequence):
 
         spectra = []
         for s in self._spectra:
-            spectra.append({'Metadata':dict(s.items()), 'Pixels':s.pixels})
-        root = {'Spectra':spectra}
+            spectra.append(s.serialize())
+        root = {'Spectra':spectra, 'SequenceNumber': self._seqNr}
 
         if pretty:
             return json.dumps(root, sort_keys=True, indent=1)
@@ -65,25 +95,34 @@ class PiccoloSpectraList(MutableSequence):
 
         :param prefix: output prefix"""
 
-        outDir = os.path.join(prefix,self._outDir)
+        outName = os.path.join(prefix,self.outName)
+        outDir = os.path.dirname(outName)
+
         if not os.path.exists(outDir):
             os.makedirs(outDir)
 
-        fname = os.path.join(outDir,self.outName)
-        if not clobber and os.path.exists(fname):
-            raise RuntimeError, '{} already exists'.format(fname)
+        if not clobber and os.path.exists(outName):
+            raise RuntimeError, '{} already exists'.format(outName)
 
-        with open(fname,'w') as outf:
+        with open(outName,'w') as outf:
             outf.write(self.serialize())
 
 class PiccoloSpectrum(MutableMapping):
     """An object containing an optical spectrum."""
-    def __init__(self):
+    def __init__(self,data=None):
         self._meta = {}
         self._meta['Direction'] = 'Missing metadata'
         self._meta['Dark'] = 'Missing metadata'
         self._pixels = None
         self.setDatetime()
+
+        # initialise from json if available
+        if data != None:
+            if isinstance(data,str):
+                data = json.loads(data)
+            for key in data['Metadata']:
+                self._meta[key] = data['Metadata'][key]
+            self._pixels = data['Pixels']
 
     def __getitem__(self,key):
         return self._meta[key]
@@ -151,3 +190,22 @@ class PiccoloSpectrum(MutableMapping):
     def getNumberOfPixels(self):
         return len(self.pixels)
 
+    def serialize(self,pretty=True):
+        spectrum = {}
+        spectrum['Metadata'] = dict(self.items())
+        spectrum['Pixels'] = self.pixels
+        
+        if pretty:
+            return json.dumps(spectrum, sort_keys=True, indent=1)
+        else:
+            return json.dumps(spectrum)
+
+if __name__ == '__main__':
+    import sys
+    
+    if len(sys.argv)>1:
+        data = open(sys.argv[1],'r').read()
+        
+        spectra = PiccoloSpectraList(data=data)
+        print spectra.directions
+        
