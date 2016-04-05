@@ -190,6 +190,23 @@ class PiccoloSpectrum(MutableMapping):
     def getNumberOfPixels(self):
         return len(self.pixels)
     
+    def computeWavelength(self,i):
+        C = self['WavelengthCalibrationCoefficients']
+        w = 0
+        for j in range(len(C)):
+            w = w+ C[j]*i**j
+        return w
+
+    @property
+    def waveLengths(self):
+        w = []
+        if 'WavelengthCalibrationCoefficients' in self.keys():
+            for i in range(self.getNumberOfPixels()):
+                w.append(self.computeWavelength(i))
+        else:
+            w = list(range(self.getNumberOfPixels()))
+        return w
+
     @property
     def as_dict(self):
         spectrum = {}
