@@ -1,4 +1,7 @@
 2016-04-29 Magnus Hagdorn
+ * piccolo2/PiccoloSpectra.py: add method to check if all spectra are complete
+
+2016-04-29 Magnus Hagdorn
  * piccolo2/PiccoloSpectra.py: add chunking to piccolo spectra classes
 
 2016-04-06 Magnus Hagdorn

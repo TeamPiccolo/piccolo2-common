@@ -58,6 +58,15 @@ class PiccoloSpectraList(MutableSequence):
         return self._chunkID
 
     @property
+    def complete(self):
+        if self._chunkID is None:
+            return True
+        for s in self:
+            if not s.complete:
+                return False
+        return True
+    
+    @property
     def seqNr(self):
         return self._seqNr
     
