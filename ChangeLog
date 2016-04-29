@@ -4,6 +4,9 @@
 2016-04-29 Magnus Hagdorn
  * piccolo2/PiccoloSpectra.py: add chunking to piccolo spectra classes
 
+2016-04-28 Magnus Hagdorn
+ * piccolo2/PiccoloWorkerThread.py: moved from piccolo2-server
+
 2016-04-06 Magnus Hagdorn
  * README.md: updated
  * setup.py: add metadata
