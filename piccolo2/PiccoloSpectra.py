@@ -9,23 +9,24 @@ from collections import MutableMapping, MutableSequence
 from datetime import datetime
 import json
 import os.path
+import numpy
 
 protectedKeys = ['Direction','Dark','Datetime']
 
 class PiccoloSpectraList(MutableSequence):
     """a collection of spectra"""
+
+    _NCHUNKS = 300
+
     def __init__(self,seqNr=0,data=None):
         self._spectra = []
         self._seqNr = seqNr
         self._prefix = ''
+        self._chunkID = None
 
         # initialise from json if available
         if data!=None:
-            if isinstance(data,(str,unicode)):
-                data = json.loads(data)
-            self._seqNr = data['SequenceNumber']
-            for s in data['Spectra']:
-                self.append(PiccoloSpectrum(data=s))
+            self._initFromData(data)
 
     def __getitem__(self,i):
         return self._spectra[i]
@@ -39,6 +40,22 @@ class PiccoloSpectraList(MutableSequence):
     def insert(self,i,y):
         assert isinstance(y,PiccoloSpectrum)
         self._spectra.insert(i,y)
+
+    def _initFromData(self,data):
+        self._spectra = []
+        if isinstance(data,(str,unicode)):
+            data = json.loads(data)
+        self._seqNr = data['SequenceNumber']
+        for s in data['Spectra']:
+            self.append(PiccoloSpectrum(data=s))
+        
+    @property
+    def NCHUNKS(self):
+        return self._NCHUNKS
+
+    @property
+    def chunk(self):
+        return self._chunkID
 
     @property
     def seqNr(self):
@@ -75,14 +92,14 @@ class PiccoloSpectraList(MutableSequence):
                  spectra.append(s)
         return spectra
 
-    def serialize(self,pretty=True):
+    def serialize(self,pretty=True,pixelType='list'):
         """serialize to JSON
 
         :param pretty: when set True (default) produce indented JSON"""
 
         spectra = []
         for s in self._spectra:
-            spectra.append(s.as_dict)
+            spectra.append(s.as_dict(pixelType))
         root = {'Spectra':spectra, 'SequenceNumber': self._seqNr}
 
         if pretty:
@@ -107,6 +124,36 @@ class PiccoloSpectraList(MutableSequence):
         with open(outName,'w') as outf:
             outf.write(self.serialize())
 
+    def getChunk(self,idx):
+        assert isinstance(idx,int)
+        assert idx>=0 and idx < self.NCHUNKS
+
+        if idx == 0:
+            # first chunk is special, copy all the meta data
+            data = self.serialize(pretty=False,pixelType='size')
+        else:
+            data = []
+            for s in self._spectra:
+                data.append(s.getChunk(idx-1,self.NCHUNKS-1).tolist())
+            data = json.dumps(data)
+
+        return data
+
+    def setChunk(self,idx,data):
+        assert isinstance(idx,int)
+        assert idx>=0 and idx < self.NCHUNKS
+
+        if idx == 0:
+            self._initFromData(data)
+        else:
+            assert self._chunkID != None
+            data = json.loads(data)
+            assert len(data) == len(self._spectra)
+            for i in range(len(data)):
+                self._spectra[i].setChunk(idx-1,self.NCHUNKS-1,data[i])
+        self._chunkID = idx
+            
+
 class PiccoloSpectrum(MutableMapping):
     """An object containing an optical spectrum."""
     def __init__(self,data=None):
@@ -114,6 +161,7 @@ class PiccoloSpectrum(MutableMapping):
         self._meta['Direction'] = 'Missing metadata'
         self._meta['Dark'] = 'Missing metadata'
         self._pixels = None
+        self._complete = False
         self.setDatetime()
 
         # initialise from json if available
@@ -122,7 +170,15 @@ class PiccoloSpectrum(MutableMapping):
                 data = json.loads(data)
             for key in data['Metadata']:
                 self._meta[key] = data['Metadata'][key]
-            self._pixels = data['Pixels']
+            if isinstance(data['Pixels'],int):
+                # create a list of correct size
+                self._pixels = -numpy.ones(data['Pixels'],dtype=numpy.int)
+            else:
+                self.pixels = data['Pixels']
+
+    @property
+    def complete(self):
+        return self._complete
 
     def __getitem__(self,key):
         return self._meta[key]
@@ -185,7 +241,7 @@ class PiccoloSpectrum(MutableMapping):
         return self._pixels
     @pixels.setter
     def pixels(self,values):
-        self._pixels = values
+        self._pixels = numpy.array(values,dtype=numpy.int)
 
     def getNumberOfPixels(self):
         return len(self.pixels)
@@ -207,19 +263,37 @@ class PiccoloSpectrum(MutableMapping):
             w = list(range(self.getNumberOfPixels()))
         return w
 
-    @property
-    def as_dict(self):
+    def as_dict(self,pixelType='array'):
         spectrum = {}
         spectrum['Metadata'] = dict(self.items())
-        spectrum['Pixels'] = self.pixels
+        if pixelType == 'size':
+            spectrum['Pixels'] = self.getNumberOfPixels()
+        elif pixelType == 'list':
+            spectrum['Pixels'] = self.pixels.tolist()
+        elif pixelType == 'array':
+            spectrum['Pixels'] = self.pixels
+        else:
+            raise RuntimeError, 'unknown pixel type %s'%pixelType
         return spectrum
 
     def serialize(self,pretty=True):
-        spectrum = self.as_dict
+        spectrum = self.as_dict(pixelType='list')
         if pretty:
             return json.dumps(spectrum, sort_keys=True, indent=1)
         else:
             return json.dumps(spectrum)
+
+    def getChunk(self,idx,nChunks):
+        return self.pixels[range(idx,self.getNumberOfPixels(),nChunks)]
+
+    def setChunk(self,idx,nChunks,data):
+        if idx!=nChunks-1:
+            self._complete = False
+        else:
+            self._complete = True
+        rng = range(idx,self.getNumberOfPixels(),nChunks)
+        assert len(rng) == len(data)
+        self._pixels[rng] = data
 
 if __name__ == '__main__':
     import sys
