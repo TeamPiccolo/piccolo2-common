@@ -1,3 +1,8 @@
+2016-05-02 Magnus Hagdorn
+ * add documentation
+ * piccolo2/PiccoloSpectra.py: improve docstrings
+ * piccolo2/PiccoloWorkerThread.py: ditto
+
 2016-04-29 Magnus Hagdorn
  * piccolo2/PiccoloSpectra.py: add method to check if all spectra are complete
 
