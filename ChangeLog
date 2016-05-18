@@ -1,3 +1,6 @@
+2016-05-19 Magnus Hagdorn
+ * piccolo2/PiccoloSpectra.py: clip spectra at 200000 to avoid overflows
+
 2016-05-02 Magnus Hagdorn
  * add documentation
  * piccolo2/PiccoloSpectra.py: improve docstrings

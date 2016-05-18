@@ -317,7 +317,8 @@ class PiccoloSpectrum(MutableMapping):
         return self._pixels
     @pixels.setter
     def pixels(self,values):
-        self._pixels = numpy.array(values,dtype=numpy.int)
+        tmp = numpy.minimum(values,200000)
+        self._pixels = numpy.array(tmp,dtype=numpy.int)
 
     def getNumberOfPixels(self):
         """the number of pixels"""
