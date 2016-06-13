@@ -1,10 +1,10 @@
-# README #
-This repository is part of the piccolo2 project based on [piccolo](https://bitbucket.org/itrobinson/piccolo) software. This package contains common infrastructure used by the other piccolo2 components.
-
-The Piccolo is a small light-weight dual-field-of-view spectroradiometer for use on unmanned aerial vehicles and monitoring sites. It was designed and built by [Dr Alasdair Mac Arthur](https://bitbucket.org/alasdairmacarthur/)  and [Dr Iain Robinson](https://bitbucket.org/itrobinson/) of the Natural Environment Research Council's National Centre for Earth Observation Field Spectroscopy Facility, GeoSciences, University of Edinburgh. The new software is developed by [Dr Magnus Hagdorn](https://bitbucket.org/magnus_hagdorn/).
+# MOVED #
+This repository was used during the development of *Piccolo 2 Common* by [Dr Magnus Hagdorn](https://bitbucket.org/magnus_hagdorn/). Since 24th May 2016 the code for *Piccolo 2 Common* resides in the *Piccolo* repository in the ```Piccolo/Source/common``` directory. Please use the [Piccolo](https://bitbucket.org/teampiccolo/piccolo) repository to access code and commit changes.
 
 Installation
 ------------
+These were the installation instructions for Piccolo 2 Common.
+
 This module uses the [python setup tools](https://pythonhosted.org/setuptools/). You can build and install the package using
 ```
 python setup.py build
