@@ -1,4 +1,7 @@
 2016-09-07 Magnus Hagdorn
+ * piccolo2/PiccoloSpectra.py: fix clobber
+
+2016-09-07 Magnus Hagdorn
  * piccolo2/PiccoloSpectra.py: optionally split spectra files into dark and
    light spectra
 

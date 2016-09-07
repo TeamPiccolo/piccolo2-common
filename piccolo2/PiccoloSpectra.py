@@ -208,15 +208,17 @@ class PiccoloSpectraList(MutableSequence):
         if not os.path.exists(outDir):
             os.makedirs(outDir)
 
-        if not clobber and os.path.exists(outName):
-            raise RuntimeError, '{} already exists'.format(outName)
-
         if split:            
             for s in ['Dark','Light']:
                 if self.haveSpectrum(s):
-                    with open('%s.%s'%(outName,s.lower()),'w') as outf:
+                    o = '%s.%s'%(outName,s.lower())
+                    if not clobber and os.path.exists(o):
+                        raise RuntimeError, '{} already exists'.format(o)
+                    with open(o,'w') as outf:
                         outf.write(self.serialize(spectrum=s))
         else:
+            if not clobber and os.path.exists(outName):
+                raise RuntimeError, '{} already exists'.format(outName)
             with open(outName,'w') as outf:
                 outf.write(self.serialize())
 
