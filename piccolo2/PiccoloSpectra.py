@@ -126,6 +126,31 @@ class PiccoloSpectraList(MutableSequence):
             dirs.add(s['Direction'])
         return list(dirs)
 
+    @property
+    def haveDark(self):
+        for s in self._spectra:
+            if s['Dark']:
+                return True
+        return False
+
+    @property
+    def haveLight(self):
+        for s in self._spectra:
+            if not s['Dark']:
+                return True
+        return False
+
+    def haveSpectrum(self,spectrum):
+        """check if a particular spectrum type is available
+        :param spectrum: must be either Light or Dark"""
+
+        if spectrum=='Dark':
+            return self.haveDark
+        elif spectrum=='Light':
+            return self.haveLight
+        else:
+            raise KeyError, 'spectrum must be one of Dark or Light'
+    
     def getSpectra(self,direction,spectrum):
         """extract a particular spectrum by type
         :param direction: the direction
@@ -142,15 +167,27 @@ class PiccoloSpectraList(MutableSequence):
                  spectra.append(s)
         return spectra
 
-    def serialize(self,pretty=True,pixelType='list'):
+    def serialize(self,pretty=True,pixelType='list',spectrum=None):
         """serialize to JSON
 
         :param pretty: when set True (default) produce indented JSON
-        :param pixelType: set the pixel type"""
-
+        :param pixelType: set the pixel type
+        :param spectrum: select spectrum type (Dark or Light) or both when None"""
+        if spectrum == 'Dark':
+            dark = True
+        elif spectrum == 'Light':
+            dark = False
+        elif spectrum == None:
+            dark = None
+        else:
+            raise KeyError, 'spectrum must be one of Dark or Light or None'
+        
         spectra = []
         for s in self._spectra:
-            spectra.append(s.as_dict(pixelType))
+            if dark == None:
+                spectra.append(s.as_dict(pixelType))
+            elif s['Dark'] == dark:
+                spectra.append(s.as_dict(pixelType))
         root = {'Spectra':spectra, 'SequenceNumber': self._seqNr}
 
         if pretty:
@@ -158,11 +195,12 @@ class PiccoloSpectraList(MutableSequence):
         else:
             return json.dumps(root)
 
-    def write(self,prefix='',clobber=True):
+    def write(self,prefix='',clobber=True, split=True):
         """write spectra to file
 
         :param prefix: output prefix
-        :param clobber: boolean whether files should be overwritten or not"""
+        :param clobber: boolean whether files should be overwritten or not
+        :param split: when set to True split files into light and dark spectra"""
 
         outName = os.path.join(prefix,self.outName)
         outDir = os.path.dirname(outName)
@@ -173,8 +211,14 @@ class PiccoloSpectraList(MutableSequence):
         if not clobber and os.path.exists(outName):
             raise RuntimeError, '{} already exists'.format(outName)
 
-        with open(outName,'w') as outf:
-            outf.write(self.serialize())
+        if split:            
+            for s in ['Dark','Light']:
+                if self.haveSpectrum(s):
+                    with open('%s.%s'%(outName,s.lower()),'w') as outf:
+                        outf.write(self.serialize(spectrum=s))
+        else:
+            with open(outName,'w') as outf:
+                outf.write(self.serialize())
 
     def getChunk(self,idx):
         """get a particular chunk
