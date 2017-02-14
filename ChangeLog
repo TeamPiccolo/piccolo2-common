@@ -1,4 +1,8 @@
 2017-02-14 Magnus Hagdorn
+ * piccolo2/PiccoloStatus.py: add flag indicating that the file number was 
+   automatically incremented to avoid overwriting data
+
+2017-02-14 Magnus Hagdorn
  * piccolo2/PiccoloStatus.py: add class for handling status flags
 
 2016-09-07 Magnus Hagdorn
