@@ -1,3 +1,6 @@
+2017-02-16 Magnus Hagdorn
+ * piccolo2/PiccoloSpectra.py: minor fix
+
 2017-02-14 Magnus Hagdorn
  * piccolo2/PiccoloStatus.py: add flag indicating that the file number was 
    automatically incremented to avoid overwriting data

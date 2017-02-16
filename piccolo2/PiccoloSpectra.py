@@ -52,7 +52,7 @@ class PiccoloSpectraList(MutableSequence):
         self._chunkID = None
 
         # initialise from json if available
-        if data!=None:
+        if data is not None:
             self._initFromData(data)
 
     def __getitem__(self,i):
@@ -177,14 +177,14 @@ class PiccoloSpectraList(MutableSequence):
             dark = True
         elif spectrum == 'Light':
             dark = False
-        elif spectrum == None:
+        elif spectrum is None:
             dark = None
         else:
             raise KeyError, 'spectrum must be one of Dark or Light or None'
         
         spectra = []
         for s in self._spectra:
-            if dark == None:
+            if dark is None:
                 spectra.append(s.as_dict(pixelType))
             elif s['Dark'] == dark:
                 spectra.append(s.as_dict(pixelType))
@@ -251,7 +251,7 @@ class PiccoloSpectraList(MutableSequence):
         if idx == 0:
             self._initFromData(data)
         else:
-            assert self._chunkID != None
+            assert self._chunkID is not None
             data = json.loads(data)
             assert len(data) == len(self._spectra)
             for i in range(len(data)):
@@ -274,7 +274,7 @@ class PiccoloSpectrum(MutableMapping):
         self.setDatetime()
 
         # initialise from json if available
-        if data != None:
+        if data is not None:
             if isinstance(data,str):
                 data = json.loads(data)
             for key in data['Metadata']:
@@ -313,7 +313,7 @@ class PiccoloSpectrum(MutableMapping):
         """set the direction to upwelling
         :param value: set direction to downwelling when False
         :type value: bool"""
-        if value == None:
+        if value is None:
             self._meta['Direction'] = 'Upwelling'
         else:
             assert isinstance(value,bool)
@@ -330,7 +330,7 @@ class PiccoloSpectrum(MutableMapping):
         """set spectrum to dark
         :param value: set to light when False
         :type value: bool"""
-        if value==None:
+        if value is None:
             self._meta['Dark'] = True
         else:
             assert isinstance(value,bool)
@@ -344,7 +344,7 @@ class PiccoloSpectrum(MutableMapping):
         """set date and time when spectrum is recorded
         :param dt: date and time of recording, use now if set to None
         :type dt: datetime"""
-        if dt == None:
+        if dt is  None:
             ts = datetime.now()
         elif isinstance(dt,datetime):
             ts = dt
@@ -356,7 +356,7 @@ class PiccoloSpectrum(MutableMapping):
     @property
     def pixels(self):
         """the pixels"""
-        if self._pixels == None:
+        if self._pixels is None:
             raise RuntimeError, 'The pixel values have not been set.'
         if len(self._pixels) == 0:
             raise RuntimeError, 'There are no pixels in the spectrum.'
