@@ -30,6 +30,7 @@ class PiccoloFlagsBits(ctypes.LittleEndianStructure):
         ("busy", c_uint32, 1 ),  # asByte & 2
         ("paused", c_uint32, 1 ),  # asByte & 4
         ("file_incremented", c_uint32, 1 ),  # asByte & 8
+        ("new_message", c_uint32, 1 ),  # asByte & 16
         ]
 
 class PiccoloFlags(ctypes.Union):

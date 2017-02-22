@@ -1,3 +1,6 @@
+2017-02-22 Magnus Hagdorn
+ * piccolo2/PiccoloStatus.py: add new status flag
+
 2017-02-16 Magnus Hagdorn
  * piccolo2/PiccoloSpectra.py: minor fix
 
