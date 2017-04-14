@@ -269,6 +269,7 @@ class PiccoloSpectrum(MutableMapping):
         self._meta = {}
         self._meta['Direction'] = 'Missing metadata'
         self._meta['Dark'] = 'Missing metadata'
+        self._meta['Type'] = 'Missing metadata'
         self._pixels = None
         self._complete = False
         self.setDatetime()
