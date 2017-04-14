@@ -43,7 +43,7 @@ class PiccoloSpectraList(MutableSequence):
         """:param seqNr: the sequence number of the spectra collection;
                          used for constructing the output file name
            :param data:  string containing JSON serialised version of the
-                         spectra list. This can be used to create a 
+                         spectra list. This can be used to create a
                          SpectraList from JSON
         """
         self._spectra = []
@@ -79,7 +79,7 @@ class PiccoloSpectraList(MutableSequence):
         self._seqNr = data['SequenceNumber']
         for s in data['Spectra']:
             self.append(PiccoloSpectrum(data=s))
-        
+
     @property
     def NCHUNKS(self):
         """the number of total chunks"""
@@ -99,12 +99,12 @@ class PiccoloSpectraList(MutableSequence):
             if not s.complete:
                 return False
         return True
-    
+
     @property
     def seqNr(self):
         """the sequency number, used in generating output filename"""
         return self._seqNr
-    
+
     @property
     def prefix(self):
         """the prefix, used in generating output filename"""
@@ -112,8 +112,8 @@ class PiccoloSpectraList(MutableSequence):
     @prefix.setter
     def prefix(self,p):
         self._prefix = p
-    
-    @property 
+
+    @property
     def outName(self):
         """the output name, generated from the prefix and sequence number"""
         return '{0}{1:06d}.pico'.format(self.prefix,self.seqNr)
@@ -150,7 +150,7 @@ class PiccoloSpectraList(MutableSequence):
             return self.haveLight
         else:
             raise KeyError, 'spectrum must be one of Dark or Light'
-    
+
     def getSpectra(self,direction,spectrum):
         """extract a particular spectrum by type
         :param direction: the direction
@@ -181,7 +181,7 @@ class PiccoloSpectraList(MutableSequence):
             dark = None
         else:
             raise KeyError, 'spectrum must be one of Dark or Light or None'
-        
+
         spectra = []
         for s in self._spectra:
             if dark is None:
@@ -208,7 +208,7 @@ class PiccoloSpectraList(MutableSequence):
         if not os.path.exists(outDir):
             os.makedirs(outDir)
 
-        if split:            
+        if split:
             for s in ['Dark','Light']:
                 if self.haveSpectrum(s):
                     o = '%s.%s'%(outName,s.lower())
@@ -257,12 +257,12 @@ class PiccoloSpectraList(MutableSequence):
             for i in range(len(data)):
                 self._spectra[i].setChunk(idx-1,self.NCHUNKS-1,data[i])
         self._chunkID = idx
-            
+
 
 class PiccoloSpectrum(MutableMapping):
     """An object containing an optical spectrum.
 
-    The PiccoloSpectrum object behaves like a python dictionary. It can be 
+    The PiccoloSpectrum object behaves like a python dictionary. It can be
     initialised from a JSON string. It also supports chunking."""
     def __init__(self,data=None):
         """:param data: JSON string used to initialise object"""
@@ -297,12 +297,12 @@ class PiccoloSpectrum(MutableMapping):
         if key in protectedKeys:
             raise KeyError, 'field {0} is a protected key'.format(key)
         self._meta[key] = value
-    
+
     def __delitem__(self,key):
         if key in protectedKeys:
             raise KeyError, 'field {0} is a protected key'.format(key)
         del self._meta[key]
-        
+
     def __iter__(self):
         return iter(self._meta)
 
@@ -332,14 +332,20 @@ class PiccoloSpectrum(MutableMapping):
         :type value: bool"""
         if value is None:
             self._meta['Dark'] = True
+            self._meta['Type'] = 'dark'
         else:
             assert isinstance(value,bool)
             self._meta['Dark'] = value
+            if value:
+                self._meta['Type'] = 'dark'
+            else:
+                self._meta['Type'] = 'light'
 
     def setLight(self):
         """set spectrum to light"""
         self._meta['Dark'] = False
-        
+        self._meta['Type'] = 'light'
+
     def setDatetime(self,dt=None):
         """set date and time when spectrum is recorded
         :param dt: date and time of recording, use now if set to None
@@ -369,7 +375,7 @@ class PiccoloSpectrum(MutableMapping):
     def getNumberOfPixels(self):
         """the number of pixels"""
         return len(self.pixels)
-    
+
     def computeWavelength(self,i):
         """compute the ith wavelength
         :param i: the wavelength index"""
@@ -442,10 +448,9 @@ class PiccoloSpectrum(MutableMapping):
 
 if __name__ == '__main__':
     import sys
-    
+
     if len(sys.argv)>1:
         data = open(sys.argv[1],'r').read()
-        
+
         spectra = PiccoloSpectraList(data=data)
         print spectra.directions
-        
