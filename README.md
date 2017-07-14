@@ -1,5 +1,4 @@
-# MOVED #
-This repository was used during the development of *Piccolo 2 Common* by [Dr Magnus Hagdorn](https://bitbucket.org/magnus_hagdorn/). Since 24th May 2016 the code for *Piccolo 2 Common* resides in the *Piccolo* repository in the ```Piccolo/Source/common``` directory. Please use the [Piccolo](https://bitbucket.org/teampiccolo/piccolo) repository to access code and commit changes.
+This repository is common files for the Piccolo. Common files run on both the Raspberry Pi and the laptop. There are several related repositories: piccolo2-server, piccolo2-client and piccolo2-player.
 
 Installation
 ------------
