@@ -27,6 +27,7 @@ from datetime import datetime
 import json
 import os.path
 import numpy
+from PiccoloCompress import decompressArray
 
 protectedKeys = ['Direction','Dark','Datetime']
 
@@ -37,7 +38,7 @@ class PiccoloSpectraList(MutableSequence):
     can be used to transfer data across a slow network.
     """
 
-    _NCHUNKS = 300
+    _NCHUNKS = 1 #300
 
     def __init__(self,seqNr=0,data=None):
         """:param seqNr: the sequence number of the spectra collection;
@@ -77,8 +78,12 @@ class PiccoloSpectraList(MutableSequence):
         if isinstance(data,(str,unicode)):
             data = json.loads(data)
         self._seqNr = data['SequenceNumber']
+        if 'Simplified' in data:
+            #for some reason, simplified spectra don't work with chunking
+            self._NCHUNKS = 1
         for s in data['Spectra']:
             self.append(PiccoloSpectrum(data=s))
+        
 
     @property
     def NCHUNKS(self):
@@ -280,11 +285,14 @@ class PiccoloSpectrum(MutableMapping):
                 data = json.loads(data)
             for key in data['Metadata']:
                 self._meta[key] = data['Metadata'][key]
-            if isinstance(data['Pixels'],int):
+            if 'PixelsB64' in self._meta:
+                self._pixels = decompressArray(self._meta['PixelsB64'])
+                #print(self._pixels)
+            elif isinstance(data['Pixels'],int):
                 # create a list of correct size
                 self._pixels = -numpy.ones(data['Pixels'],dtype=numpy.int)
-            else:
-                self.pixels = data['Pixels']
+            elif isinstance(data['Pixels'],list):
+                self._pixels = data['Pixels']
 
     @property
     def complete(self):
@@ -370,6 +378,8 @@ class PiccoloSpectrum(MutableMapping):
         return self._pixels
     @pixels.setter
     def pixels(self,values):
+        if isinstance(values,str):
+            values = decompressArray(values)
         tmp = numpy.minimum(values,200000)
         self._pixels = numpy.array(tmp,dtype=numpy.int)
 
@@ -390,7 +400,20 @@ class PiccoloSpectrum(MutableMapping):
     def waveLengths(self):
         """the list of wavelengths"""
         w = []
-        if 'WavelengthCalibrationCoefficients' in self.keys():
+        if 'WavelengthsB64' in self.keys():
+            #wavelengths are b64 encoded indices
+            compressed_w = self._meta['WavelengthsB64']
+            if self._meta['DiffCompressed']:
+                decompressed_w = decompressArray(compressed_w,dtype='uint8')
+                decompressed_w = numpy.cumsum(decompressed_w)
+            else:
+                decompressed_w = decompressArray(compressed_w)
+
+            w.append(self.computeWavelength(0))
+            for i in decompressed_w:
+                w.append(self.computeWavelength(i))
+
+        elif 'WavelengthCalibrationCoefficients' in self.keys():
             for i in range(self.getNumberOfPixels()):
                 w.append(self.computeWavelength(i))
         else:
@@ -439,6 +462,7 @@ class PiccoloSpectrum(MutableMapping):
         :param nChunks: the total number of chunks
         :param data: the chunk data
         :type data: JSON string"""
+        print(data)
         if idx!=nChunks-1:
             self._complete = False
         else:
