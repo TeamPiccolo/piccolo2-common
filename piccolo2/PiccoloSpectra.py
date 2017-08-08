@@ -24,10 +24,10 @@ __all__ = ['PiccoloSpectraList','PiccoloSpectrum']
 
 from collections import MutableMapping, MutableSequence
 from datetime import datetime
+from PiccoloCompress import decompressArray,decompressMetadata
 import json
 import os.path
 import numpy
-from PiccoloCompress import decompressArray
 
 protectedKeys = ['Direction','Dark','Datetime']
 
@@ -77,14 +77,32 @@ class PiccoloSpectraList(MutableSequence):
         self._spectra = []
         if isinstance(data,(str,unicode)):
             data = json.loads(data)
-        self._seqNr = data['SequenceNumber']
-        if 'Simplified' in data:
-            #for some reason, simplified spectra don't work with chunking
-            self._NCHUNKS = 1
-        for s in data['Spectra']:
-            self.append(PiccoloSpectrum(data=s))
-        
 
+        if 'M' in data:
+            self._initFromSimplifiedData(data)
+
+        else:
+            self._seqNr = data['SequenceNumber']
+            for s in data['Spectra']:
+                self.append(PiccoloSpectrum(data=s))
+
+    def _initFromSimplifiedData(self,data):
+        """Decode a simplified spectrum dictionary.
+        """
+        meta = decompressMetadata(data['M'])
+        for i,_ in enumerate(meta):
+            meta[i]['Pixels'] = decompressArray(data['P'][i])
+            if data['D'][i] == 'T':
+                #array was diff-compressed, need to re-sum it
+                wlen_idxs = decompressArray(data['W'][i],dtype='uint8')
+                wavelengths = numpy.empty(wlen_idxs.size + 1)
+                wavelengths[1:] = numpy.cumsum(wlen_idxs)
+                wavelengths[0] = 0
+            else:
+                wavelengths = decompressArray(data['W'])
+            meta[i]['Metadata']['Wavelengths'] = wavelengths
+            self.append(PiccoloSpectrum(data=meta[i]))
+            
     @property
     def NCHUNKS(self):
         """the number of total chunks"""
@@ -285,14 +303,11 @@ class PiccoloSpectrum(MutableMapping):
                 data = json.loads(data)
             for key in data['Metadata']:
                 self._meta[key] = data['Metadata'][key]
-            if 'PixelsB64' in self._meta:
-                self._pixels = decompressArray(self._meta['PixelsB64'])
-                #print(self._pixels)
-            elif isinstance(data['Pixels'],int):
+            if isinstance(data['Pixels'],int):
                 # create a list of correct size
                 self._pixels = -numpy.ones(data['Pixels'],dtype=numpy.int)
-            elif isinstance(data['Pixels'],list):
-                self._pixels = data['Pixels']
+            else:
+                self.pixels = data['Pixels']
 
     @property
     def complete(self):
@@ -378,8 +393,6 @@ class PiccoloSpectrum(MutableMapping):
         return self._pixels
     @pixels.setter
     def pixels(self,values):
-        if isinstance(values,str):
-            values = decompressArray(values)
         tmp = numpy.minimum(values,200000)
         self._pixels = numpy.array(tmp,dtype=numpy.int)
 
@@ -400,21 +413,12 @@ class PiccoloSpectrum(MutableMapping):
     def waveLengths(self):
         """the list of wavelengths"""
         w = []
-        if 'WavelengthsB64' in self.keys():
-            #wavelengths are b64 encoded indices
-            compressed_w = self._meta['WavelengthsB64']
-            if self._meta['DiffCompressed']:
-                decompressed_w = decompressArray(compressed_w,dtype='uint8')
-                decompressed_w = numpy.cumsum(decompressed_w)
+        if 'WavelengthCalibrationCoefficients' in self.keys():
+            if 'Wavelengths' in self.keys():
+                idxs = self._meta['Wavelengths']
             else:
-                decompressed_w = decompressArray(compressed_w)
-
-            w.append(self.computeWavelength(0))
-            for i in decompressed_w:
-                w.append(self.computeWavelength(i))
-
-        elif 'WavelengthCalibrationCoefficients' in self.keys():
-            for i in range(self.getNumberOfPixels()):
+                idxs = range(self.getNumberOfPixels())
+            for i in idxs:
                 w.append(self.computeWavelength(i))
         else:
             w = list(range(self.getNumberOfPixels()))
@@ -462,7 +466,6 @@ class PiccoloSpectrum(MutableMapping):
         :param nChunks: the total number of chunks
         :param data: the chunk data
         :type data: JSON string"""
-        print(data)
         if idx!=nChunks-1:
             self._complete = False
         else:

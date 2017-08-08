@@ -35,6 +35,89 @@ def compressAsDiff(array,dtype='uint8',fallback_dtype='uint16'):
     else:
         return False,compressArray(array,fallback_dtype)
 
+
+def compressMetadata(spectra_dicts):
+    """Compress a list of dictionaries of metadata into a string.
+    Takes a list of dictionaries with the following keys:
+        'SerialNumber','Dark','Direction','SaturationLevel'
+        'WavelengthCalibrationCoefficients'
+    And returns a string of the format: [SerialNumber 1 ... SerialNumber N] as 
+    plaintext, followed by [WCC 1 SatLvl1 ... WCC N SatLvl N] as base64 strings,
+    followed by the serial number index  of each spectrum('0'-'9'), followed by
+    a list of upwelling-light ('U') vs downwelling-light ('D') vs upwelling-dark
+    ('u') vs downwelling-dark ('d') for each spectrum.
+    """
+    meta_dicts = [s['Metadata'] for s in spectra_dicts]
+    serialNos = list(set([m['SerialNumber'] for m in meta_dicts]))
+
+    #base64 encode WavelengthCalibrationCoefficients and Saturation Levels as 
+    #4-byte numbers
+    waveCalibCoeffs = []
+    satLvls = []
+    for sn in serialNos:
+        #lazy one liner to find a spectrum with the right serial number
+        sn_metas = [m for m in meta_dicts if m['SerialNumber'] == sn]
+        m = sn_metas[0]
+        wcc_bytes = np.array(m['WavelengthCalibrationCoefficients'],dtype='float32')
+        waveCalibCoeffs.append(wcc_bytes.tostring())
+        #SaturationLevel isn't always in there for some reason
+        sat_bytes = np.array(m.get('SaturationLevel',1), dtype='uint32')
+        satLvls.append(sat_bytes.tostring())
+    
+    numeric_mdata = base64.b64encode(''.join(waveCalibCoeffs+satLvls))
+
+    #get the spectrometer order of the set of records
+    sn_order = [str(serialNos.index(m['SerialNumber'])) for m in meta_dicts]
+    
+    #get the direction and light level of each spectrum
+    #this probably isn't very robust
+    dir_light = [(2*m['Direction'][0]).title()[m['Dark']]for m in meta_dicts]
+
+    #concatenate everything and return
+    return ''.join([' '.join(serialNos),' ',numeric_mdata,' ']+sn_order+dir_light)
+
+def decompressMetadata(meta_string):
+    """Reconstruct a list of metadata dictionaries that was encoded by
+    compressMetadata
+    """
+    #divide string into sections: Spectrometer names, numeric metadata, and
+    #measurement condition metadata
+    split_str = meta_string.split(' ')
+    serialNos = split_str[:-2]
+    nSerialNos = len(serialNos)
+
+    dir_info = split_str[-1]
+    spec_used = dir_info[:len(dir_info)/2]
+    dir_light = dir_info[len(dir_info)/2:]
+
+    base64_numbers = split_str[-2]
+    number_bytes = base64.b64decode(base64_numbers)
+    #there are 16 bytes of wavenumber info per 4 bytes of saturation info
+    coeffBytes = number_bytes[:4*len(number_bytes)/5]
+    saturationBytes = number_bytes[4*len(number_bytes)/5:]
+    saturationLevels = np.fromstring(saturationBytes,dtype='uint32').tolist()
+    coeffList = np.fromstring(coeffBytes,dtype='float32').reshape(nSerialNos,4)
+    coeffList = coeffList.tolist()
+    print(coeffList)
+
+    #reconstruct the list of dictionaries
+    out_list = []
+    for spec_num,serial_number_idx in enumerate(spec_used):
+        i = int(serial_number_idx)
+        dark = dir_light[i].islower()
+        direction = ["Upwelling","Downwelling"][dir_light[spec_num] in "Dd"]
+        out_list.append({
+            "Metadata":{
+                "SerialNumber":serialNos[i],
+                "WavelengthCalibrationCoefficients":coeffList[i],
+                "SaturationLevel":saturationLevels[i],
+                "Dark":dark,
+                "Direction":direction
+            }
+        })
+
+    return out_list
+
 if __name__ == '__main__':
     import json
 
@@ -44,6 +127,33 @@ if __name__ == '__main__':
     print("Raw json size: {}, Compressed size: {} ({}% of raw)".format(
         len(jdata),len(cdata),int((100.*len(cdata))/len(jdata))))
 
-    assert isinstance(cdata,str)
-    assert (decompressArray(cdata) == data).all()
+    assert((decompressArray(cdata) == data).all())
+
+    meta_list= [
+        {"Metadata":{'WavelengthCalibrationCoefficients':[ 644.8102416992188, 
+            0.165981724858284, -1.5631136193405837e-05, -5.75436365224391e-10 ], 
+            'SerialNumber':'Foo','Dark':False,'Direction':'Upwelling',
+            'SaturationLevel':28000}},
+        {"Metadata":{'WavelengthCalibrationCoefficients':[ 500.2352416992188, 
+            0.885981724858284, -5.1631136193405837e-05, 8.25436365224391e-10 ],
+            'SerialNumber':'Bar','Dark':False,'Direction':'Upwelling',
+            'SaturationLevel':38000}},
+        {"Metadata":{'WavelengthCalibrationCoefficients':[ 644.8102416992188, 
+            0.165981724858284, -1.5631136193405837e-05, -5.75436365224391e-10 ],
+            'SerialNumber':'Foo','Dark':False,'Direction':'Downwelling',
+            'SaturationLevel':28000}},
+
+        {"Metadata":{'WavelengthCalibrationCoefficients':[ 500.2352416992188, 
+            0.885981724858284, -5.1631136193405837e-05, 8.25436365224391e-10 ],
+            'SerialNumber':'Bar','Dark':False,'Direction':'Downwelling',
+            'SaturationLevel':38000}},
+    ]
+    cmeta = compressMetadata(meta_list)
+    jmeta = json.dumps(meta_list)
+    print("Raw json size: {}, Compressed size: {} ({}% of raw)".format(
+        len(jmeta),len(cmeta),int((100.*len(cmeta))/len(jmeta))))
+
+
+
+
 
