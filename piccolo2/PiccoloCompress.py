@@ -1,5 +1,6 @@
 import numpy as np
 import base64,zlib
+import struct
 
 def compressArray(array,dtype='uint16'):
     """Converts a numpy array into a byte array, then gzips it and
@@ -35,6 +36,30 @@ def compressAsDiff(array,dtype='uint8',fallback_dtype='uint16'):
     else:
         return False,compressArray(array,fallback_dtype)
 
+def compress16to8(array):
+    """scale down from 16 bits to 8 in a not-as-lossy-as-it-could-be way"""
+    min_val = array.min()
+    array -= min_val
+    #cover the smallest range of values possible, this is kinda slow
+    max_val = array.max()
+    bits_to_shift = TWO_POWS.searchsorted(max_val)
+    scale_down_factor= 255./max_val
+    array*=scale_down_factor
+    smaller_arr = (array).astype('uint8')
+    byte_arr = struct.pack("fH",scale_down_factor,min_val)
+    byte_arr += smaller_arr.tostring()
+    return base64.b64encode(zlib.compress(byte_arr))
+
+def decompress8to16(byte_string):
+    """Recover an array compressed by compress16to8. Some loss of precision
+    will occur.
+    """
+    byte_arr = zlib.decompress(base64.b64decode(byte_string))
+    scale_down_factor,min_val = struct.unpack("fH",byte_arr[:6])
+    array = np.fromstring(byte_arr[6:],dtype='uint8')
+    out_arr = np.zeros(array.size,dtype='uint16')+min_val
+    out_arr[:]+=((array.astype('uint16'))/scale_down_factor).astype('uint16')
+    return out_arr
 
 def compressMetadata(spectra_dicts):
     """Compress a list of dictionaries of metadata into a string.

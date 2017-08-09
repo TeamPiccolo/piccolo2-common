@@ -24,7 +24,7 @@ __all__ = ['PiccoloSpectraList','PiccoloSpectrum']
 
 from collections import MutableMapping, MutableSequence
 from datetime import datetime
-from PiccoloCompress import decompressArray,decompressMetadata
+from PiccoloCompress import decompressArray,decompress8to16,decompressMetadata
 import json
 import os.path
 import numpy
@@ -91,7 +91,8 @@ class PiccoloSpectraList(MutableSequence):
         """
         meta = decompressMetadata(data['M'])
         for i,_ in enumerate(meta):
-            meta[i]['Pixels'] = decompressArray(data['P'][i])
+            pixels = decompress8to16(data['P'][i])
+            meta[i]['Pixels'] = pixels
             if data['D'][i] == 'T':
                 #array was diff-compressed, need to re-sum it
                 wlen_idxs = decompressArray(data['W'][i],dtype='uint8')
