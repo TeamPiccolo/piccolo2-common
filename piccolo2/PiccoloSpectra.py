@@ -89,6 +89,8 @@ class PiccoloSpectraList(MutableSequence):
     def _initFromSimplifiedData(self,data):
         """Decode a simplified spectrum dictionary.
         """
+        old_chunks = self._NCHUNKS
+        self._NCHUNKS = 1
         meta = decompressMetadata(data['M'])
         for i,_ in enumerate(meta):
             pixels = decompress8to16(data['P'][i])
@@ -101,8 +103,12 @@ class PiccoloSpectraList(MutableSequence):
                 wavelengths[0] = 0
             else:
                 wavelengths = decompressArray(data['W'])
+
             meta[i]['Metadata']['Wavelengths'] = wavelengths
+            meta[i]['Metadata']['FileName'] = data.get('F','')
             self.append(PiccoloSpectrum(data=meta[i]))
+
+        self._NCHUNKS = old_chunks
             
     @property
     def NCHUNKS(self):
@@ -414,8 +420,10 @@ class PiccoloSpectrum(MutableMapping):
     def waveLengths(self):
         """the list of wavelengths"""
         w = []
+        need_to_interp = False
         if 'WavelengthCalibrationCoefficients' in self.keys():
             if 'Wavelengths' in self.keys():
+                #we've recieved a partial list of wavelengths, interpolate
                 idxs = self._meta['Wavelengths']
             else:
                 idxs = range(self.getNumberOfPixels())
@@ -423,6 +431,7 @@ class PiccoloSpectrum(MutableMapping):
                 w.append(self.computeWavelength(i))
         else:
             w = list(range(self.getNumberOfPixels()))
+
         return w
 
     def as_dict(self,pixelType='array'):

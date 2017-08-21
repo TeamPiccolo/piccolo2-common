@@ -1,7 +1,6 @@
 import numpy as np
 import base64,zlib
 import struct
-
 def compressArray(array,dtype='uint16'):
     """Converts a numpy array into a byte array, then gzips it and
     base64 encodes it. Should be ~50% smaller than string representation.
@@ -36,13 +35,24 @@ def compressAsDiff(array,dtype='uint8',fallback_dtype='uint16'):
     else:
         return False,compressArray(array,fallback_dtype)
 
+def compressFileList(file_list):
+    """File lists are highly repetitive, a simple zip works well"""
+    return base64.b64encode(zlib.compress(','.join(file_list)))
+
+
+def decompressFileList(compressed_files):
+    files = zlib.decompress(base64.b64decode(compressed_files)).split(',')
+    if files == ['']:
+        files.pop()
+    return files
+
+
 def compress16to8(array):
     """scale down from 16 bits to 8 in a not-as-lossy-as-it-could-be way"""
     min_val = array.min()
     array -= min_val
     #cover the smallest range of values possible, this is kinda slow
     max_val = array.max()
-    bits_to_shift = TWO_POWS.searchsorted(max_val)
     scale_down_factor= 255./max_val
     array*=scale_down_factor
     smaller_arr = (array).astype('uint8')
@@ -57,8 +67,8 @@ def decompress8to16(byte_string):
     byte_arr = zlib.decompress(base64.b64decode(byte_string))
     scale_down_factor,min_val = struct.unpack("fH",byte_arr[:6])
     array = np.fromstring(byte_arr[6:],dtype='uint8')
-    out_arr = np.zeros(array.size,dtype='uint16')+min_val
-    out_arr[:]+=((array.astype('uint16'))/scale_down_factor).astype('uint16')
+    out_arr = np.zeros(array.size,dtype='float32')+min_val
+    out_arr[:]+=((array.astype('float32'))/scale_down_factor)
     return out_arr
 
 def compressMetadata(spectra_dicts):
