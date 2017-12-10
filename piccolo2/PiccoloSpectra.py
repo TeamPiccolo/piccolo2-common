@@ -211,7 +211,12 @@ class PiccoloSpectraList(MutableSequence):
         if split:
             for s in ['Dark','Light']:
                 if self.haveSpectrum(s):
-                    o = '%s.%s'%(outName,s.lower())
+                    o = "{}_{}".format(outName, s.lower())
+                    # The above producues a filename with the extension (.pico) in the middle of the filename:
+                    #      b000000_s000000.pico_dark
+                    # The two lines below fix it.
+                    o = o.replace('.pico', '')
+                    o = o + '.pico'
                     if not clobber and os.path.exists(o):
                         raise RuntimeError, '{} already exists'.format(o)
                     with open(o,'w') as outf:
