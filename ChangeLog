@@ -1,4 +1,8 @@
 2017-12-13 Magnus Hagdorn
+ * piccolo2/PiccoloStatus.py: fix bug and expose list of shuttters and
+   spectrometers 
+
+2017-12-13 Magnus Hagdorn
  * piccolo2.yml: add new dependency
  * setup.py: ditto
  * piccolo2/PiccoloStatus.py: add extended status object
