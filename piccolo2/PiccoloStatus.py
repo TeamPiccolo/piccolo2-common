@@ -19,9 +19,12 @@
 .. moduleauthor:: Magnus Hagdorn <magnus.hagdorn@ed.ac.uk>
 """
 
-__all__ = ['PiccoloStatus']
+__all__ = ['PiccoloStatus','PiccoloExtendedStatus']
 
 import ctypes
+from bitarray import bitarray
+import base64
+import math
 c_uint32 = ctypes.c_uint32
 
 class PiccoloFlagsBits(ctypes.LittleEndianStructure):
@@ -65,6 +68,77 @@ class PiccoloStatus(object):
         else:
             self.unset(name)
 
+class PiccoloExtendedStatus(object):
+    def __init__(self,spectrometers,shutters):
+        self._spectrometers = list(spectrometers)
+        self._spectrometers.sort()
+        self._shutters = list(shutters)
+        self._shutters.sort()
+
+        self._nBits = 2+ len(self._shutters) + \
+                      len(self._spectrometers)*len(self._shutters)
+        
+        self._status = bitarray(8*int(math.ceil(self._nBits/8.))) # round up to bytes
+        self._status[:] = False
+
+    def __len__(self):
+        return self._nBits
+        
+    @property
+    def status(self):
+        return self._status[:self._nBits].tolist()
+    @property
+    def spectrometers(self):
+        return self._spectrometers
+    @property
+    def shutters(self):
+        return self._shutters
+        
+    def _shutter_idx(self,shutter):
+        return 2+self.shutters.index(shutter)
+    def _auto_idx(self,spectrometer,shutter):
+        return 2+len(self.shutters) + \
+            self.spectrometers.index(spectrometer)*len(self.shutters) + \
+            self.shutters.index(shutter)
+
+    def start_autointegration(self):
+        self._status[0] = True
+    def stop_autointegration(self):
+        self._status[0] = False
+    def isAutointegrating(self):
+        return self._status[0]
+    
+    def start_recording(self):
+        self._status[1] = True
+    def stop_recording(self):
+        self._status[1] = False
+    def isRecording(self):
+        return self._status[1]
+    
+    def open(self,shutter):
+        self._status[self._shutter_idx(shutter)] = True
+    def close(self,shutter):
+        self._status[self._shutter_idx(shutter)] = False
+    def isOpen(self,shutter):
+        return self._status[self._shutter_idx(shutter)]
+    def isClosed(self,shutter):
+        return not self._status[self._shutter_idx(shutter)]
+
+    def setAutointegrationResult(self,spectrometer,shutter,result):
+        self._status[self._auto_idx(spectrometer,shutter)] = bool(result)
+    def autoSuccess(self,spectrometer,shutter):
+        self.setAutointegrationResult(spectrometer,shutter,True)
+    def autoFail(self,spectrometer,shutter):
+        self.setAutointegrationResult(spectrometer,shutter,False)
+    def isAutointegrationSuccessful(self,spectrometer,shutter):
+        return self._status[self._auto_idx(spectrometer,shutter)]
+
+    def encode(self):
+        return base64.b64encode(self._status.tobytes())
+    def update(self,b64status):
+        self._status = bitarray()
+        self._status.frombytes(base64.b64decode(b64status))
+    
 if __name__ == '__main__':
     f = PiccoloStatus()
 
@@ -79,4 +153,19 @@ if __name__ == '__main__':
     print f2.paused
 
 
+    shutters = ['up','down']
+    spectrometers = ['sA','sB']
 
+    eStatus = PiccoloExtendedStatus(spectrometers,shutters)
+    print eStatus.status, len(eStatus),eStatus.isOpen('up'),eStatus.isAutointegrationSuccessful('sA','down')
+
+    eStatus.open('up')
+    print eStatus.status, len(eStatus),eStatus.isOpen('up'),eStatus.isAutointegrationSuccessful('sA','down')
+
+    eStatus.autoSuccess('sA','down')
+    print eStatus.status, len(eStatus),eStatus.isOpen('up'),eStatus.isAutointegrationSuccessful('sA','down')
+
+    e2Status = PiccoloExtendedStatus(spectrometers,shutters)
+    e2Status.update(eStatus.encode())
+    print
+    print e2Status.status
