@@ -87,13 +87,19 @@ class PiccoloExtendedStatus(object):
     @property
     def status(self):
         return self._status[:self._nBits].tolist()
+    @property
+    def spectrometers(self):
+        return self._spectrometers
+    @property
+    def shutters(self):
+        return self._shutters
         
     def _shutter_idx(self,shutter):
-        return 2+self._shutters.index(shutter)
+        return 2+self.shutters.index(shutter)
     def _auto_idx(self,spectrometer,shutter):
-        return 2+len(self._shutters) + \
-            self._spectrometers.index(spectrometer)*len(self._shutters) + \
-            self._shutters.index(shutter)
+        return 2+len(self.shutters) + \
+            self.spectrometers.index(spectrometer)*len(self.shutters) + \
+            self.shutters.index(shutter)
 
     def start_autointegration(self):
         self._status[0] = True
