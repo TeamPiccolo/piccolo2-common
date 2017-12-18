@@ -107,7 +107,7 @@ class PiccoloExtendedStatus(object):
     def stop_recording(self):
         self._status[1] = False
     def isRecording(self):
-        return self._status[self._spectrometer_idx(spectrometer)]
+        return self._status[1]
     
     def open(self,shutter):
         self._status[self._shutter_idx(shutter)] = True
