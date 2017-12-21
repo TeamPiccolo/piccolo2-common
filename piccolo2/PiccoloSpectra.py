@@ -77,7 +77,7 @@ class PiccoloSpectraList(MutableSequence):
         if isinstance(data,(str,unicode)):
             data = json.loads(data)
         for s in data['Spectra']:
-            self._seqNr = s['SequenceNumber']
+            self._seqNr = s['Metadata']['SequenceNumber']
             self.append(PiccoloSpectrum(data=s))
 
     @property

@@ -1,4 +1,8 @@
 2017-12-21 Magnus Hagdorn
+ * piccolo2/PiccoloSpectra.py: get squence number from correct part of the
+   data structure
+
+2017-12-21 Magnus Hagdorn
  * piccolo2/PiccoloSpectra.py: move sequence number to metadata
 
 2017-12-13 Magnus Hagdorn
