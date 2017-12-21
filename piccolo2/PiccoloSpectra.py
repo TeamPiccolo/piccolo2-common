@@ -76,8 +76,8 @@ class PiccoloSpectraList(MutableSequence):
         self._spectra = []
         if isinstance(data,(str,unicode)):
             data = json.loads(data)
-        self._seqNr = data['SequenceNumber']
         for s in data['Spectra']:
+            self._seqNr = s['SequenceNumber']
             self.append(PiccoloSpectrum(data=s))
 
     @property
@@ -184,11 +184,11 @@ class PiccoloSpectraList(MutableSequence):
 
         spectra = []
         for s in self._spectra:
-            if dark is None:
+            # add sequence number to meta data
+            s['SequenceNumber'] = self._seqNr
+            if dark is None or s['Dark'] == dark:
                 spectra.append(s.as_dict(pixelType))
-            elif s['Dark'] == dark:
-                spectra.append(s.as_dict(pixelType))
-        root = {'Spectra':spectra, 'SequenceNumber': self._seqNr}
+        root = {'Spectra':spectra}
 
         if pretty:
             return json.dumps(root, sort_keys=True, indent=1)
