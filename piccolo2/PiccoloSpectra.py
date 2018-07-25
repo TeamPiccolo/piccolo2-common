@@ -20,15 +20,36 @@
 .. moduleauthor:: Iain Robinson <iain.robinson@ed.ac.uk>
 """
 
-__all__ = ['PiccoloSpectraList','PiccoloSpectrum']
+__all__ = ['PiccoloSpectraList','PiccoloSpectrum',"haveLight","smoothSpectrum"]
 
 from collections import MutableMapping, MutableSequence
 from datetime import datetime
 import json
 import os.path
 import numpy
+from scipy.signal import medfilt
 
 protectedKeys = ['Direction','Dark','Datetime']
+
+def haveLight(spectrum):
+    """return True if the spectrum contains some light."""
+
+    if isinstance(spectrum,PiccoloSpectrum):
+        spectrum = spectrum.pixels
+
+    # compute ratio between max and median value
+    ratio = numpy.max(spectrum)/float(numpy.median(spectrum))
+    return ratio>1.1
+
+def smoothSpectrum(spectrum,width=3):
+    if isinstance(spectrum,PiccoloSpectrum):
+        spectrum = spectrum.pixels
+
+    # make sure width is odd
+    if width%2==0:
+        width = width+1
+    smoothed = medfilt(spectrum,kernel_size=width)
+    return numpy.array(smoothed,dtype=int)
 
 class PiccoloSpectraList(MutableSequence):
     """a collection of spectra

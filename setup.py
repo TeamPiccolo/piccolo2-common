@@ -23,7 +23,7 @@ setup(
     packages = find_packages(),
     use_scm_version=True,
     setup_requires=['setuptools_scm'],
-    install_requires = ['bitarray'],
+    install_requires = ['bitarray', 'scipy'],
     # metadata for upload to PyPI
     author = "Magnus Hagdorn, Alasdair MacArthur, Iain Robinson",
     description = "Part of the piccolo2 system. This package provides common modules",

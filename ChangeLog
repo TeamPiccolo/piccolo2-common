@@ -1,3 +1,9 @@
+2018-07-25 Magnus Hagdorn
+ * piccolo2/PiccoloSpectra.py: add functions to determine if spectrum has light
+   and to smooth spectra
+ * M piccolo2.yml: add new dependency
+ * setup.py: ditto
+
 2017-12-21 Magnus Hagdorn
  * piccolo2/PiccoloSpectra.py: get squence number from correct part of the
    data structure
