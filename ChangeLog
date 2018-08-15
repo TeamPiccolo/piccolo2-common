@@ -1,3 +1,7 @@
+2018-08-15 Magnus Hagdorn
+ * piccolo2/*.py: moved to piccolo2/common
+ * piccolo2/common/__init__.py: added
+
 2017-12-21 Magnus Hagdorn
  * piccolo2/PiccoloSpectra.py: get squence number from correct part of the
    data structure
